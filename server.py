@@ -2,6 +2,9 @@ import os
 import asyncio
 from aiohttp import web
 import aiofiles
+import logging
+
+logger = logging.getLogger('archivate')
 
 INTERVAL_SECS = 1
 PATH_TO_PHOTO = os.path.join(os.getcwd(), 'test_photos/')
@@ -29,15 +32,21 @@ async def archivate(request):
     response.headers['Content-Disposition'] = 'form-data; name="field1"; filename="archive.zip"'
     await response.prepare(request)
 
+    chunk_counter = 1
     while True:
         stdout = await process.stdout.read(n=convert_to_bytes(100))
+        logger.info(f'Sending archive {archive_hash} chunk {chunk_counter}')
+        chunk_counter += 1
         bytes = bytearray(stdout)
 
         await response.write(bytes)
+
         await asyncio.sleep(INTERVAL_SECS * 0.1)
 
         if not stdout:
+            logger.info(f'Archive {archive_hash} sent successfully.')
             break
+
     return response
 
 
@@ -60,7 +69,12 @@ async def handle_index_page(request):
     return web.Response(text=index_contents, content_type='text/html')
 
 
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+
+
 if __name__ == '__main__':
+    main()
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
