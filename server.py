@@ -40,8 +40,7 @@ async def archivate(request):
         bytes = bytearray(stdout)
 
         await response.write(bytes)
-
-        await asyncio.sleep(INTERVAL_SECS * 0.1)
+        # await asyncio.sleep(INTERVAL_SECS)
 
         if not stdout:
             logger.info(f'Archive {archive_hash} sent successfully.')
@@ -70,7 +69,9 @@ async def handle_index_page(request):
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        format='%(levelname)s [%(asctime)s] %(message)s',
+        level=logging.DEBUG)
 
 
 if __name__ == '__main__':
