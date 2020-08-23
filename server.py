@@ -12,10 +12,14 @@ def convert_to_bytes(kylobytes: int) -> int:
 
 
 async def archivate(request):
+    """Zip photos from PATH_TO_PHOTO/{archive_hash}/ and return it to user."""
+
     archive_hash = request.match_info['archive_hash']
     path = os.path.join(PATH_TO_PHOTO, archive_hash)
-    command = f'cd {path} && zip -r - .'
+    if not os.path.exists(path):
+        raise web.HTTPNotFound(text='Архив не существует или был удален', content_type='text/html')
 
+    command = f'cd {path} && zip -r - .'
     process = await asyncio.create_subprocess_shell(
         command,
         stdout=asyncio.subprocess.PIPE,
