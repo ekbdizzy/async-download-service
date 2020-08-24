@@ -10,6 +10,12 @@ INTERVAL_SECS = 1
 PATH_TO_PHOTO = os.path.join(os.getcwd(), 'test_photos/')
 
 
+def increment(counter=0) -> int:
+    while True:
+        counter += 1
+        yield counter
+
+
 def convert_to_bytes(kylobytes: int) -> int:
     return kylobytes * 1024
 
@@ -22,6 +28,8 @@ async def archivate(request):
     if not os.path.exists(path):
         raise web.HTTPNotFound(text='Архив не существует или был удален', content_type='text/html')
 
+    connection = asyncio.open_connection()
+
     command = f'cd {path} && zip -r - .'
     process = await asyncio.create_subprocess_shell(
         command,
@@ -32,19 +40,34 @@ async def archivate(request):
     response.headers['Content-Disposition'] = 'form-data; name="field1"; filename="archive.zip"'
     await response.prepare(request)
 
-    chunk_counter = 1
-    while True:
-        stdout = await process.stdout.read(n=convert_to_bytes(100))
-        logger.info(f'Sending archive {archive_hash} chunk {chunk_counter}')
-        chunk_counter += 1
-        bytes = bytearray(stdout)
+    counter = increment()
+    try:
+        while True:
+            stdout = await process.stdout.read(n=convert_to_bytes(100))
+            logger.info(f'Sending archive {archive_hash} chunk {next(counter)}')
+            bytes = bytearray(stdout)
 
-        await response.write(bytes)
-        # await asyncio.sleep(INTERVAL_SECS)
+            await response.write(bytes)
+            await asyncio.sleep(INTERVAL_SECS)
 
-        if not stdout:
-            logger.info(f'Archive {archive_hash} sent successfully.')
-            break
+            if not stdout:
+                break
+
+            # raise asyncio.CancelledError
+
+    except asyncio.CancelledError:
+        logging.debug('Download was interrupted')
+        kill_command = f'/bin/bash -c "kill $(pgrep -P {process.pid})"'
+        # kill_command = f'/bin/bash -c "echo $(pgrep -P {process.pid})"'
+        kill_process = await asyncio.create_subprocess_shell(
+            kill_command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+
+        process.kill()
+
+    finally:
+        connection.close()
 
     return response
 
