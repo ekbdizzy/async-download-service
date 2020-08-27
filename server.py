@@ -30,9 +30,10 @@ async def archivate(request):
 
     connection = asyncio.open_connection()
 
-    command = f'cd {path} && zip -r - .'
-    process = await asyncio.create_subprocess_shell(
-        command,
+    command = ['zip', '-r', '-', '.']
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE)
 
@@ -53,20 +54,12 @@ async def archivate(request):
             if not stdout:
                 break
 
-            # raise asyncio.CancelledError
 
     except asyncio.CancelledError:
         logging.debug('Download was interrupted')
-        kill_command = f'/bin/bash -c "kill $(pgrep -P {process.pid})"'
-        # kill_command = f'/bin/bash -c "echo $(pgrep -P {process.pid})"'
-        kill_process = await asyncio.create_subprocess_shell(
-            kill_command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE)
-
-        process.kill()
 
     finally:
+        process.kill()
         connection.close()
 
     return response
