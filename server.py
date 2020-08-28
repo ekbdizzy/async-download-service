@@ -54,28 +54,21 @@ async def archivate(request):
             if not stdout:
                 break
 
-
     except asyncio.CancelledError:
-        logging.debug('Download was interrupted')
+        logging.info('Download was interrupted')
 
     finally:
-        process.kill()
+        try:
+            stdout, stderr = await process.communicate()
+            process.kill()
+
+        except ProcessLookupError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            logger.warning('KeyboardInterrupt')
+
         connection.close()
 
     return response
-
-
-async def uptime_handler(request):
-    response = web.StreamResponse()
-
-    response.headers['Content-Type'] = 'text/html'
-    await response.prepare(request)
-
-    archive_hash = request.match_info['archive_hash']
-    message = os.path.join(PATH_TO_PHOTO, archive_hash)
-
-    await response.write(message.encode('utf-8'))
-    await asyncio.sleep(INTERVAL_SECS)
 
 
 async def handle_index_page(request):
@@ -96,6 +89,5 @@ if __name__ == '__main__':
     app.add_routes([
         web.get('/', handle_index_page),
         web.get('/archive/{archive_hash}/', archivate),
-        # web.get('/archive/{archive_hash}/', uptime_handler),
     ])
     web.run_app(app)
