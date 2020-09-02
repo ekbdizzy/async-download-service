@@ -5,7 +5,6 @@ import aiofiles
 import logging
 import utils
 from argparser import parse_args
-from typing import Union
 
 args = parse_args()
 PATH_TO_PHOTOS = args.path_to_photos

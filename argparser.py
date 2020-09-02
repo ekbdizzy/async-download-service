@@ -11,7 +11,7 @@ def parse_args():
     --timeout, -t: add timeout in seconds
     --path, -p: set path to folder with photos."""
 
-    parser = argparse.ArgumentParser(description='Description of parser')
+    parser = argparse.ArgumentParser(description='Start server with async download service')
 
     parser.add_argument('--log', '-l',
                         action='store_true',
@@ -22,7 +22,6 @@ def parse_args():
 
     parser.add_argument('--timeout', '-t',
                         action='store',
-                        metavar='',
                         type=int,
                         default=os.getenv('TIMEOUT') or 0,
                         help='add timeout in seconds',
@@ -31,7 +30,6 @@ def parse_args():
 
     parser.add_argument('--path', '-p',
                         action='store',
-                        metavar='',
                         type=str,
                         dest='path_to_photos',
                         help='set path to folder with photos',
