@@ -14,7 +14,7 @@ TIMEOUT = args.timeout
 logger = logging.getLogger('archivate')
 
 
-def set_logging_level(logging_is_active: bool) -> Union[logging.DEBUG, logging.ERROR]:
+def set_logging_level(logging_is_active: bool):
     if logging_is_active:
         return logging.DEBUG
     return logging.ERROR
