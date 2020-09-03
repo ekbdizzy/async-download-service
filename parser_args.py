@@ -3,6 +3,7 @@ import argparse
 from dotenv import load_dotenv
 
 load_dotenv()
+PHOTO_FOLDER = os.getenv('PHOTO_FOLDER')
 
 
 def parse_args():
@@ -32,8 +33,8 @@ def parse_args():
                         action='store',
                         type=str,
                         dest='path_to_photos',
-                        help='set path to folder with photos',
-                        default=os.path.join(os.getcwd(), os.getenv('PHOTO_FOLDER'))
+                        help=f'set path to folder with photos, default is {PHOTO_FOLDER}',
+                        default=f'{os.getcwd()}/{PHOTO_FOLDER}'
                         )
 
     return parser.parse_args()
