@@ -3,14 +3,19 @@ import asyncio
 from aiohttp import web
 import aiofiles
 import logging
-import utils
-from argparser import parse_args
+import itertools
+from parser_args import parse_args
 
 args = parse_args()
 PATH_TO_PHOTOS = args.path_to_photos
 TIMEOUT = args.timeout
+CHUNK_SIZE_KB = 100
 
-logger = logging.getLogger('archivate')
+logger = logging.getLogger('main')
+
+
+def kilobytes_to_bytes(kilobytes: int) -> int:
+    return kilobytes * 1024
 
 
 def set_logging_level(logging_is_active: bool):
@@ -29,11 +34,9 @@ async def archivate(request):
     """Zip photos from PATH_TO_PHOTO/{archive_hash}/ and return it to user."""
 
     archive_hash = request.match_info['archive_hash']
-    path = os.path.join(PATH_TO_PHOTOS, archive_hash)
+    path = f'{PATH_TO_PHOTOS}/{archive_hash}'
     if not os.path.exists(path):
         raise web.HTTPNotFound(text='Архив не существует или был удален', content_type='text/html')
-
-    connection = asyncio.open_connection()
 
     command = ['zip', '-r', '-', '.']
     process = await asyncio.create_subprocess_exec(
@@ -43,34 +46,33 @@ async def archivate(request):
         stderr=asyncio.subprocess.PIPE)
 
     response = web.StreamResponse()
-    response.headers['Content-Disposition'] = 'form-data; name="field1"; filename="archive.zip"'
+    response.headers['Content-Disposition'] = 'form-data; filename="archive.zip"'
     await response.prepare(request)
 
-    counter = utils.increment()
     try:
-        while True:
-            stdout = await process.stdout.read(n=utils.convert_to_bytes(100))
-            logger.info(f'Sending archive {archive_hash} chunk {next(counter)}')
-            bytes = bytearray(stdout)
-
-            await response.write(bytes)
-            await asyncio.sleep(TIMEOUT)
+        for counter in itertools.count(1):
+            stdout = await process.stdout.read(n=kilobytes_to_bytes(CHUNK_SIZE_KB))
 
             if not stdout:
+                logger.info('Archive is uploaded.')
                 break
 
-    except asyncio.CancelledError:
-        logging.info('Download was interrupted')
+            logger.info(f'Sending archive {archive_hash} chunk {counter}')
+            await response.write(bytearray(stdout))
+            await asyncio.sleep(TIMEOUT)
 
-        try:
-            stdout, stderr = await process.communicate()
-            process.kill()
-        except ProcessLookupError:
-            asyncio.set_event_loop(asyncio.new_event_loop())
-            logger.warning('KeyboardInterrupt')
+    except asyncio.CancelledError:
+        logging.info('Download was interrupted.')
 
     finally:
-        connection.close()
+        stdout, stderr = await process.communicate()
+
+        try:
+            process.kill()
+
+        except ProcessLookupError:
+            if process.returncode == 9:
+                logging.info('KeyboardInterrupt')
 
     return response
 
