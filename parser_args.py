@@ -3,7 +3,7 @@ import argparse
 from dotenv import load_dotenv
 
 load_dotenv()
-PHOTO_FOLDER = os.getenv('PHOTO_FOLDER')
+PHOTO_FOLDER = os.getenv('PHOTO_FOLDER') or 'test_photos'
 
 
 def parse_args():

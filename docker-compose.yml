@@ -12,4 +12,8 @@ services:
     ports:
       - 8080:8080
 
+    volumes:
+      - .:/project
+      - ./test_photos:/project/test_photos
+
     command: python server.py --log --timeout 1

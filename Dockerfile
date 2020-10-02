@@ -9,4 +9,4 @@ RUN apt-get update
 RUN apt-get -y install zip
 
 RUN pip install -r requirements.txt
-COPY . /project
+#COPY . /project

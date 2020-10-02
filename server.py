@@ -24,18 +24,13 @@ def set_logging_level(logging_is_active: bool):
     return logging.ERROR
 
 
-def main():
-    logging.basicConfig(
-        format='%(levelname)s [%(asctime)s] %(message)s',
-        level=set_logging_level(args.logging_is_active))
-
-
 async def archivate(request):
     """Zip photos from PATH_TO_PHOTO/{archive_hash}/ and return it to user."""
 
     archive_hash = request.match_info['archive_hash']
     path = f'{PATH_TO_PHOTOS}/{archive_hash}'
     if not os.path.exists(path):
+        print(PATH_TO_PHOTOS)
         raise web.HTTPNotFound(text='Архив не существует или был удален', content_type='text/html')
 
     command = ['zip', '-r', '-', '.']
@@ -83,11 +78,18 @@ async def handle_index_page(request):
     return web.Response(text=index_contents, content_type='text/html')
 
 
-if __name__ == '__main__':
-    main()
+def main():
+    logging.basicConfig(
+        format='%(levelname)s [%(asctime)s] %(message)s',
+        level=set_logging_level(args.logging_is_active))
+
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
         web.get('/archive/{archive_hash}/', archivate),
     ])
     web.run_app(app)
+
+
+if __name__ == '__main__':
+    main()
