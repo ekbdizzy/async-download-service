@@ -55,8 +55,8 @@ python server.py
 #### Указание значений через .env
 Пример можно посмотреть в файле .env_sample
 ```
-TIMEOUT=1
-PHOTO_FOLDER='test_photos/'
+TIMEOUT=1  # Указать время задержки loop в секундах
+PHOTO_FOLDER='test_photos/'  # Указать путь к папке с фото(по умолчанию 'test_photos/')
 ```
 
 
