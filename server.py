@@ -4,6 +4,7 @@ from aiohttp import web
 import aiofiles
 import logging
 import itertools
+from functools import partial
 from parser_args import parse_args
 
 args = parse_args()
@@ -24,13 +25,12 @@ def set_logging_level(logging_is_active: bool):
     return logging.ERROR
 
 
-async def archivate(request):
+async def archivate(request, path_to_photos, timeout):
     """Zip photos from PATH_TO_PHOTO/{archive_hash}/ and return it to user."""
 
     archive_hash = request.match_info['archive_hash']
-    path = f'{PATH_TO_PHOTOS}/{archive_hash}'
+    path = os.path.join(path_to_photos, archive_hash)
     if not os.path.exists(path):
-        print(PATH_TO_PHOTOS)
         raise web.HTTPNotFound(text='Архив не существует или был удален', content_type='text/html')
 
     command = ['zip', '-r', '-', '.']
@@ -46,15 +46,15 @@ async def archivate(request):
 
     try:
         for counter in itertools.count(1):
-            stdout = await process.stdout.read(n=kilobytes_to_bytes(CHUNK_SIZE_KB))
+            stdout_chunk = await process.stdout.read(n=kilobytes_to_bytes(CHUNK_SIZE_KB))
 
-            if not stdout:
+            if not stdout_chunk:
                 logger.info('Archive is uploaded.')
                 break
 
             logger.info(f'Sending archive {archive_hash} chunk {counter}')
-            await response.write(bytearray(stdout))
-            await asyncio.sleep(TIMEOUT)
+            await response.write(stdout_chunk)
+            await asyncio.sleep(timeout)
 
     except asyncio.CancelledError:
         logging.info('Download was interrupted.')
@@ -83,10 +83,12 @@ def main():
         format='%(levelname)s [%(asctime)s] %(message)s',
         level=set_logging_level(args.logging_is_active))
 
+    parial_archivate = partial(archivate, path_to_photos=PATH_TO_PHOTOS, timeout=TIMEOUT)
+
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get('/archive/{archive_hash}/', archivate),
+        web.get('/archive/{archive_hash}/', parial_archivate),
     ])
     web.run_app(app)
 
