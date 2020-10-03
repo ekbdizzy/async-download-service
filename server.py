@@ -46,6 +46,7 @@ async def archivate(request, path_to_photos, timeout):
 
     try:
         for counter in itertools.count(1):
+
             stdout_chunk = await process.stdout.read(n=kilobytes_to_bytes(CHUNK_SIZE_KB))
 
             if not stdout_chunk:
@@ -58,13 +59,13 @@ async def archivate(request, path_to_photos, timeout):
 
     except asyncio.CancelledError:
         logging.info('Download was interrupted.')
+        await process.communicate()
+        raise
 
     finally:
-        stdout, stderr = await process.communicate()
 
         try:
             process.kill()
-
         except ProcessLookupError:
             if process.returncode == 9:
                 logging.info('KeyboardInterrupt')
@@ -82,7 +83,6 @@ def main():
     logging.basicConfig(
         format='%(levelname)s [%(asctime)s] %(message)s',
         level=set_logging_level(args.logging_is_active))
-
     parial_archivate = partial(archivate, path_to_photos=PATH_TO_PHOTOS, timeout=TIMEOUT)
 
     app = web.Application()
