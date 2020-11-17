@@ -1,5 +1,7 @@
 import os
 import asyncio
+import time
+
 from aiohttp import web
 import aiofiles
 import logging
@@ -13,7 +15,7 @@ logger = logging.getLogger('main')
 
 
 def kilobytes_to_bytes(kilobytes: int) -> int:
-    return kilobytes * 1024
+    return kilobytes * 1  # TODO change to 1024
 
 
 def set_logging_level(logging_is_active: bool):
@@ -56,19 +58,16 @@ async def archivate(request, path_to_photos, timeout):
 
     except asyncio.CancelledError:
         logging.info('Download was interrupted.')
-        try:
-            process.kill()
-        except ProcessLookupError:
-            pass
         raise
 
     finally:
-        await process.communicate()
 
         try:
             process.kill()
         except ProcessLookupError:
             pass
+
+        await process.communicate()
 
         if process.returncode == 9:
             logging.info('KeyboardInterrupt')
