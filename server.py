@@ -7,9 +7,6 @@ import itertools
 from functools import partial
 from parser_args import parse_args
 
-args = parse_args()
-PATH_TO_PHOTOS = args.path_to_photos
-TIMEOUT = args.timeout
 CHUNK_SIZE_KB = 100
 
 logger = logging.getLogger('main')
@@ -59,16 +56,22 @@ async def archivate(request, path_to_photos, timeout):
 
     except asyncio.CancelledError:
         logging.info('Download was interrupted.')
-        await process.communicate()
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
         raise
 
     finally:
+        await process.communicate()
 
         try:
             process.kill()
         except ProcessLookupError:
-            if process.returncode == 9:
-                logging.info('KeyboardInterrupt')
+            pass
+
+        if process.returncode == 9:
+            logging.info('KeyboardInterrupt')
 
     return response
 
@@ -80,15 +83,19 @@ async def handle_index_page(request):
 
 
 def main():
+    args = parse_args()
+    PATH_TO_PHOTOS = args.path_to_photos
+    TIMEOUT = args.timeout
+
     logging.basicConfig(
         format='%(levelname)s [%(asctime)s] %(message)s',
         level=set_logging_level(args.logging_is_active))
-    parial_archivate = partial(archivate, path_to_photos=PATH_TO_PHOTOS, timeout=TIMEOUT)
+    partial_archivate = partial(archivate, path_to_photos=PATH_TO_PHOTOS, timeout=TIMEOUT)
 
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get('/archive/{archive_hash}/', parial_archivate),
+        web.get('/archive/{archive_hash}/', partial_archivate),
     ])
     web.run_app(app)
 
